@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Criar Novo Usuário</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+  <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center text-cyan-400 mb-6">➕ Criar Novo Usuário</h2>
+    <form action="{{ url_for('criar_usuario') }}" method="POST" class="space-y-4">
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Usuário:</label>
+        <input type="text" name="usuario" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Senha:</label>
+        <input type="password" name="senha" required class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Tipo de usuário:</label>
+        <select name="tipo" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500">
+          <option value="comum">Comum</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+
+      <div class="pt-4">
+        <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-2 rounded shadow">
+          Criar Usuário
+        </button>
+      </div>
+
+      <div class="text-center pt-4">
+        <a href="{{ url_for('painel_admin') }}" class="text-cyan-400 hover:underline text-sm">← Voltar ao painel</a>
+      </div>
+
+    </form>
+  </div>
+</body>
+</html>

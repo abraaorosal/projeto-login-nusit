@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Erro no Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #1c1c1c, #2c3e50);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .error-container {
+            background-color: #1e1e1e;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 {
+            color: #ff4c4c;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 16px;
+            color: #dddddd;
+            margin-bottom: 30px;
+        }
+        a {
+            display: inline-block;
+            text-decoration: none;
+            background-color: #00d1b2;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        a:hover {
+            background-color: #00b89c;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h2>Erro no Login</h2>
+        <p>{{ mensagem }}</p>
+        <a href="/">Voltar</a>
+    </div>
+</body>
+</html>
