@@ -1,104 +1,228 @@
-from flask import Flask, render_template, request, redirect, url_for
-from datetime import datetime
+from __future__ import annotations
+
 import json
 import os
+from datetime import datetime
+from functools import wraps
+from pathlib import Path
+
+from dotenv import load_dotenv
+from flask import Flask, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
+
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent
+USER_FILE = BASE_DIR / "usuarios.json"
+ACCESS_LOG = BASE_DIR / "acessos.log"
+
+APP_SECRET_KEY = os.getenv("APP_SECRET_KEY")
+DASHBOARD_URL = os.getenv("DASHBOARD_URL", "")
+ADMIN_USER = os.getenv("ADMIN_USER", "")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+if not APP_SECRET_KEY:
+    raise RuntimeError(
+        "APP_SECRET_KEY is required. Copy .env.example to .env and configure it locally."
+    )
 
 app = Flask(__name__)
+app.secret_key = APP_SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true",
+)
 
-# Caminho do arquivo de usuários
-ARQUIVO_USUARIOS = "usuarios.json"
-LINK_DASHBOARD = "https://script.google.com/macros/s/AKfycbyhqCf8NUBmSNkiEsyABrGTZeINNRtPEnbc95h_N7owOjaDkHhGuis6ZCxuI3ekfPwxDg/exec"
 
-def carregar_usuarios():
-    if not os.path.exists(ARQUIVO_USUARIOS):
+def load_users() -> dict:
+    if not USER_FILE.exists():
         return {}
-    with open(ARQUIVO_USUARIOS, "r") as f:
-        return json.load(f)
 
-def salvar_usuarios(usuarios):
-    with open(ARQUIVO_USUARIOS, "w") as f:
-        json.dump(usuarios, f, indent=4)
+    with USER_FILE.open("r", encoding="utf-8") as file:
+        data = json.load(file)
 
-def registrar_acesso(usuario, ip):
-    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    linha = f"{agora} - Usuário: {usuario} - IP: {ip}\n"
-    with open("acessos.log", "a") as log:
-        log.write(linha)
+    if not isinstance(data, dict):
+        raise ValueError("Invalid local user database format.")
 
-@app.route('/')
+    return data
+
+
+def save_users(users: dict) -> None:
+    with USER_FILE.open("w", encoding="utf-8") as file:
+        json.dump(users, file, indent=2, ensure_ascii=False)
+
+
+def ensure_bootstrap_admin() -> None:
+    users = load_users()
+
+    if users:
+        return
+
+    if not ADMIN_USER or not ADMIN_PASSWORD:
+        return
+
+    users[ADMIN_USER] = {
+        "password_hash": generate_password_hash(ADMIN_PASSWORD),
+        "tipo": "admin",
+    }
+    save_users(users)
+
+
+def register_access(username: str) -> None:
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with ACCESS_LOG.open("a", encoding="utf-8") as log:
+        log.write(f"{timestamp} - User: {username}\n")
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("authenticated"):
+            return redirect(url_for("index"))
+
+        if session.get("user_type") != "admin":
+            return redirect(url_for("index"))
+
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+ensure_bootstrap_admin()
+
+
+@app.get("/")
 def index():
-    return render_template('login.html')
+    if session.get("authenticated") and session.get("user_type") == "admin":
+        return redirect(url_for("admin_panel"))
 
-@app.route('/login', methods=['POST'])
+    return render_template("login.html")
+
+
+@app.post("/login")
 def login():
-    usuario = request.form['usuario']
-    senha = request.form['senha']
-    usuarios = carregar_usuarios()
+    username = request.form.get("usuario", "").strip()
+    password = request.form.get("senha", "")
 
-    if usuario in usuarios and usuarios[usuario]['senha'] == senha:
-        ip = request.remote_addr or "IP não detectado"
-        registrar_acesso(usuario, ip)
+    users = load_users()
+    user = users.get(username)
 
-        if usuarios[usuario]['tipo'] == "admin":
-            return redirect(url_for('painel_admin'))
-        else:
-            return render_template("transicao.html", link=LINK_DASHBOARD)
+    if not user:
+        return render_template("erro.html", mensagem="Usuário ou senha incorretos."), 401
 
-    else:
-        return render_template('erro.html', mensagem="Usuário ou senha incorretos.")
+    stored_hash = user.get("password_hash", "")
+    if not stored_hash or not check_password_hash(stored_hash, password):
+        return render_template("erro.html", mensagem="Usuário ou senha incorretos."), 401
 
-@app.route('/admin')
-@app.route('/admin')
-def painel_admin():
-    usuarios = carregar_usuarios()
-    acessos = []
+    session.clear()
+    session["authenticated"] = True
+    session["username"] = username
+    session["user_type"] = user.get("tipo", "comum")
 
-    filtro_usuario = request.args.get("usuario")
+    register_access(username)
 
-    if os.path.exists("acessos.log"):
-        with open("acessos.log", "r") as f:
-            for linha in f:
-                if not filtro_usuario or f"Usuário: {filtro_usuario}" in linha:
-                    acessos.append(linha.strip())
+    if session["user_type"] == "admin":
+        return redirect(url_for("admin_panel"))
 
-    return render_template('admin.html', usuarios=usuarios, acessos=acessos, filtro_usuario=filtro_usuario)
+    if not DASHBOARD_URL:
+        session.clear()
+        return render_template(
+            "erro.html",
+            mensagem="Dashboard não configurado neste ambiente.",
+        ), 503
 
-@app.route('/admin/criar', methods=['GET', 'POST'])
-def criar_usuario():
-    if request.method == 'POST':
-        novo_usuario = request.form['usuario']
-        nova_senha = request.form['senha']
-        tipo = request.form['tipo']
-        usuarios = carregar_usuarios()
-        if novo_usuario in usuarios:
-            return render_template('erro.html', mensagem="Usuário já existe.")
-        usuarios[novo_usuario] = {"senha": nova_senha, "tipo": tipo}
-        salvar_usuarios(usuarios)
-        return redirect(url_for('painel_admin'))
-    return render_template('criar_usuario.html')
+    return render_template("transicao.html", link=DASHBOARD_URL)
 
-@app.route('/admin/resetar', methods=['POST'])
-def resetar_senha():
-    usuario = request.form['usuario']
-    usuarios = carregar_usuarios()
-    if usuario in usuarios:
-        usuarios[usuario]['senha'] = '123456'  # Senha padrão
-        salvar_usuarios(usuarios)
-    return redirect(url_for('painel_admin'))
 
-@app.route('/admin/excluir', methods=['POST'])
-def excluir_usuario():
-    usuario = request.form['usuario']
-    usuarios = carregar_usuarios()
-    if usuario in usuarios and usuario != 'admin':
-        del usuarios[usuario]
-        salvar_usuarios(usuarios)
-    return redirect(url_for('painel_admin'))
+@app.get("/admin")
+@admin_required
+def admin_panel():
+    users = load_users()
+    accesses = []
+    user_filter = request.args.get("usuario", "").strip()
 
-@app.route('/logout')
+    if ACCESS_LOG.exists():
+        with ACCESS_LOG.open("r", encoding="utf-8") as file:
+            for line in file:
+                entry = line.strip()
+                if not user_filter or f"User: {user_filter}" in entry:
+                    accesses.append(entry)
+
+    return render_template(
+        "admin.html",
+        usuarios=users,
+        acessos=accesses,
+        filtro_usuario=user_filter,
+    )
+
+
+@app.route("/admin/criar", methods=["GET", "POST"])
+@admin_required
+def create_user():
+    if request.method == "GET":
+        return render_template("criar_usuario.html")
+
+    username = request.form.get("usuario", "").strip()
+    password = request.form.get("senha", "")
+    user_type = request.form.get("tipo", "comum")
+
+    if not username or len(password) < 10:
+        return render_template(
+            "erro.html",
+            mensagem="Informe um usuário e uma senha com pelo menos 10 caracteres.",
+        ), 400
+
+    if user_type not in {"comum", "admin"}:
+        return render_template("erro.html", mensagem="Tipo de usuário inválido."), 400
+
+    users = load_users()
+    if username in users:
+        return render_template("erro.html", mensagem="Usuário já existe."), 409
+
+    users[username] = {
+        "password_hash": generate_password_hash(password),
+        "tipo": user_type,
+    }
+    save_users(users)
+
+    return redirect(url_for("admin_panel"))
+
+
+@app.post("/admin/excluir")
+@admin_required
+def delete_user():
+    username = request.form.get("usuario", "").strip()
+    users = load_users()
+
+    if username and username != session.get("username") and username in users:
+        del users[username]
+        save_users(users)
+
+    return redirect(url_for("admin_panel"))
+
+
+@app.post("/admin/resetar")
+@admin_required
+def legacy_reset_password():
+    return render_template(
+        "erro.html",
+        mensagem=(
+            "O reset por senha padrão foi removido por segurança. "
+            "Crie uma nova conta ou implemente um fluxo seguro de redefinição."
+        ),
+    ), 410
+
+
+@app.get("/logout")
 def logout():
-    return redirect('/')
+    session.clear()
+    return redirect(url_for("index"))
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "5000")),
+        debug=False,
+    )
