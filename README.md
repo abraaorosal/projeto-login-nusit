@@ -1,57 +1,42 @@
-# NUSIT Login Prototype
+# NUSIT Login Prototype — Discontinued
 
-> **Legacy prototype / educational repository. Not production-ready.**
+> **Status: discontinued / legacy repository**
 
-Flask-based authentication prototype created to control access to an external reporting dashboard and provide a basic administrative interface.
+This Flask authentication prototype is no longer maintained and is preserved only for historical and educational reference.
 
-This repository is intentionally **not part of the featured portfolio** because the current implementation represents an early-stage prototype and requires security hardening before any production use.
+The current branch has been sanitized so that local runtime data and the committed virtual environment are no longer part of the active codebase.
+
+## What was improved before discontinuation
+
+- plaintext passwords replaced by Werkzeug password hashing;
+- administrative routes protected by Flask session checks;
+- insecure default-password reset disabled;
+- Flask debug mode disabled;
+- session signing key moved to environment configuration;
+- dashboard destination moved to environment configuration;
+- local user database and access log removed from the current branch;
+- committed `venv/` removed from the current branch;
+- `.gitignore` added for runtime, environment and local-development files;
+- `.env.example` added for safe local configuration.
 
 ## Technology stack
 
 - Python
 - Flask
 - Jinja2
+- Werkzeug security utilities
 - HTML/CSS
-- Tailwind CSS in selected templates
-- JSON-based local persistence
+- local JSON persistence for demonstration purposes
 
-## Current prototype capabilities
+## Local setup
 
-- login form;
-- user-type distinction;
-- administrative user management;
-- access logging;
-- redirection to an external reporting dashboard.
+Create an environment file:
 
-## Security status
+```bash
+cp .env.example .env
+```
 
-The current codebase should be treated as a learning/prototyping artifact.
-
-Before production use, the following changes are required:
-
-- replace plaintext password storage with secure password hashing;
-- add session-based authorization for administrative routes;
-- move secrets and configuration to environment variables;
-- remove committed runtime files and access logs;
-- disable Flask debug mode in production;
-- add CSRF protection;
-- validate and sanitize administrative inputs;
-- define secure password-reset flows;
-- move persistence from local JSON to an appropriate datastore when needed.
-
-## Repository hygiene
-
-A `.gitignore` is included to prevent future commits of:
-
-- virtual environments;
-- `.env` files;
-- runtime user databases;
-- access logs;
-- local IDE/OS files.
-
-> Files that were committed historically can remain accessible in Git history even after deletion. Any credential that has ever been committed should be considered exposed and rotated.
-
-## Running the prototype locally
+Create a virtual environment locally:
 
 ```bash
 python -m venv .venv
@@ -60,16 +45,18 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Windows PowerShell:
+The real `.env`, runtime user database and access logs must never be committed.
 
-```powershell
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python app.py
-```
+## Security note
+
+Removing sensitive files from the current branch **does not erase them from historical Git commits**.
+
+Any password or credential that existed in the previous committed `usuarios.json` must be considered exposed and should not be reused anywhere.
+
+A complete historical purge would require Git history rewriting and force-pushing the rewritten history. Because this repository is discontinued, the recommended long-term action is to archive it after ensuring any historical credentials have been rotated.
 
 ## Portfolio classification
 
-**Status:** legacy prototype / security-hardening candidate
+**Legacy prototype — not a featured portfolio project.**
 
-This repository is retained for historical and educational value rather than presented as production-grade authentication software.
+The repository is useful as an example of how an early prototype can be hardened and retired responsibly.
