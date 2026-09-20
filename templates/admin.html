@@ -3,20 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <title>Painel de Administração</title>
-  <!-- Importa Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex flex-col items-center py-8">
-
-    <!-- Barra superior com botão de logout -->
-<div class="w-full max-w-2xl flex justify-end mb-4">
-    <a href="{{ url_for('logout') }}" class="text-sm text-white bg-blue-600 hover:bg-red-700 px-4 py-2 rounded shadow">
-      🚪 Sair
-    </a>
+  <div class="w-full max-w-2xl flex justify-end mb-4">
+    <a href="{{ url_for('logout') }}" class="text-sm text-white bg-blue-600 hover:bg-red-700 px-4 py-2 rounded shadow">🚪 Sair</a>
   </div>
 
-  <!-- Formulário de filtro por usuário -->
-<form method="GET" action="{{ url_for('painel_admin') }}" class="w-full max-w-2xl mb-4">
+  <form method="GET" action="{{ url_for('admin_panel') }}" class="w-full max-w-2xl mb-4">
     <label for="usuario" class="block text-sm font-medium mb-1 text-cyan-200">Filtrar histórico por usuário:</label>
     <div class="flex gap-2">
       <select name="usuario" id="usuario" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500">
@@ -28,18 +22,11 @@
       <button type="submit" class="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-4 py-2 rounded shadow">Filtrar</button>
     </div>
   </form>
-  
-  
-  
-  <!-- Título principal do painel -->
+
   <h2 class="text-3xl font-bold text-cyan-400 mb-6">Administração - NUSIT</h2>
 
-  <!-- Botão para criar novo usuário -->
-  <a href="{{ url_for('criar_usuario') }}" class="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-2 px-4 rounded mb-6">
-    ➕ Criar novo usuário
-  </a>
+  <a href="{{ url_for('create_user') }}" class="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-2 px-4 rounded mb-6">➕ Criar novo usuário</a>
 
-  <!-- Tabela de usuários existentes -->
   <table class="table-auto border-collapse w-full max-w-2xl bg-gray-800 rounded-lg shadow-lg">
     <thead>
       <tr class="bg-gray-700">
@@ -49,27 +36,18 @@
       </tr>
     </thead>
     <tbody>
-      <!-- Loop pelos usuários cadastrados -->
       {% for nome, dados in usuarios.items() %}
         <tr class="border-t border-gray-600">
           <td class="px-4 py-2">{{ nome }}</td>
           <td class="px-4 py-2 capitalize">{{ dados.tipo }}</td>
           <td class="px-4 py-2">
-            {% if nome != 'admin' %}
-              <!-- Botão de reset de senha -->
-              <form action="/admin/resetar" method="post" class="inline">
-                <input type="hidden" name="usuario" value="{{ nome }}">
-                <button type="submit" class="text-yellow-400 hover:text-yellow-300 mr-2">🔁 Resetar Senha</button>
-              </form>
-
-              <!-- Botão de exclusão de usuário -->
-              <form action="/admin/excluir" method="post" class="inline">
+            {% if nome != session.get('username') %}
+              <form action="{{ url_for('delete_user') }}" method="post" class="inline">
                 <input type="hidden" name="usuario" value="{{ nome }}">
                 <button type="submit" class="text-red-500 hover:text-red-400">🗑 Excluir</button>
               </form>
             {% else %}
-              <!-- Proteção para não excluir ou resetar o admin principal -->
-              <span class="text-gray-500 italic">Protegido</span>
+              <span class="text-gray-500 italic">Sessão atual</span>
             {% endif %}
           </td>
         </tr>
@@ -77,12 +55,10 @@
     </tbody>
   </table>
 
-  <!-- Seção de histórico de acessos -->
   <div class="mt-10 w-full max-w-2xl">
     <h3 class="text-xl font-semibold text-cyan-400 mb-4">📜 Histórico de Acessos</h3>
     <div class="bg-gray-800 rounded-lg p-4 max-h-64 overflow-y-auto shadow">
       {% if acessos %}
-        <!-- Lista de acessos lidos do arquivo acessos.log -->
         <ul class="text-sm space-y-1">
           {% for entrada in acessos %}
             <li class="border-b border-gray-700 pb-1">{{ entrada }}</li>
@@ -93,6 +69,5 @@
       {% endif %}
     </div>
   </div>
-
 </body>
 </html>
